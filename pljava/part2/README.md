@@ -251,6 +251,11 @@ echo -n "');" >> keys.sql
 psql test < keys.sql
 ```
 
+It will look like something like this when sanitized:
+```sql
+CREATE TABLE keys(id int primary key, priv varchar not null, pub varchar not null); INSERT INTO keys VALUES(1, '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');
+```
+
 After done with populating the table we should have a nice table with both private and public key. Now is time to create our Java classes. I will reuse the "**Crypto**" class for the cryptographic functions and will create a new class to add our trigger functions. I will only add the relevant part of the Crypto class here but you can find the code described here in my [github page here[1]](https://github.com/elchinoo/blogs/tree/main/pljava) including Part 1 and Part 3 when released. Let's get to the code:
 ```java
 /**
@@ -497,3 +502,9 @@ test=#
 ```
 
 Worked like a charm! Here we finish this part 2 and at this point we are able to query and manipulate objects inside of our database. The next and last article of this serie will cover external calls and we will see how to use external resources from PL/Java, don't miss it!
+
+
+<p>
+<br />
+[1] https://github.com/elchinoo/blogs/tree/main/pljava
+</p>
