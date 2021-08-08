@@ -1,4 +1,5 @@
 # PostgreSQL PL/Java – A How-To, Part 1
+> This post is published at https://www.percona.com/blog/postgresql-pl-java-how-to-part-1/
 
 We’ve recently received some questions regarding PL/Java and I found it hard to get clear instructions searching on the internet. It’s not that there is no good information out there, but most of it is either incomplete, outdated, or confusing and I decided to create this short “how-to” and show how to install it and how to get it running with few examples.
 
@@ -355,7 +356,7 @@ test=# SELECT getCustomerTotal(9);
 test=#
 ```
 
-We finish this part here and with this last example. At this point, we are able to access objects, loop through a resultset, and return the result back as a single object like a TEXT. I will discuss how to return an array/resultset, how to use PL/Java functions within triggers, and how to use external resources in part two and part three of this article, stay tuned!
+We finish this part here with this last example. At this point, we are able to access objects, loop through a resultset, and return the result back as a single object like a TEXT. I will discuss how to return an array/resultset, how to use PL/Java functions within triggers, and how to use external resources in part two and part three of this article, stay tuned!
 
 <p>
 <br />
