@@ -2,7 +2,7 @@
 
 We discussed how to install and create a simple class in the first part of this series where we ran a SELECT and returned one row with one column with a formatted text. Now it's time to expand and see how to return multiple tuples.
 
-A little disclaimer here, I'm not going to comment much on the Java code because this is not intended to be a Java tutorial and the examples here are just for educational purpose, not intended to be of high performance nor used in production!
+A little disclaimer here, I'm not going to comment much on the Java code because this is not intended to be a Java tutorial. The examples here are just for educational purposes, not intended to be of high performance or used in production!
 
 ## Returning a table structure
 
@@ -95,7 +95,7 @@ test=#
 
 Returning the result of a plain SQL has its usage like visibility/permissioning control, but we usually need to manipulate the results of a query before returning and to do this we can implement the interface "**org.postgresql.pljava.ResultSetProvider**". 
 
-In the following example, I will implement a simple method to anonymize sensitive data with a hash function. I will create a helper class to deal with the hash and cryptographic functions to keep the CustomerResultSet class clean:
+I will implement a simple method to anonymize sensitive data with a hash function in the following example. I'll also create a helper class to deal with the hash and cryptographic functions to keep the CustomerResultSet class clean:
 
 ```java
 /**
@@ -205,14 +205,14 @@ public class CustomerHash implements ResultSetProvider {
 }
 ```
 
-The number of classes is increasing, then instead of mentioning them one by one lets just use the "*.java" to build the classes and the "*.class" to create the jar:
+The number of classes is increasing, then instead of mentioning them one by one let's just use the "*.java" to build the classes and the "*.class" to create the jar:
 
 ```bash
 javac -cp "~/pljava-1_6_2/build/pljava-api-1.6.2.jar" com/percona/blog/pljava/*.java
 jar -c -f /app/pg12/lib/pljavaPart2.jar com/percona/blog/pljava/*.class
 ```
 
-Remember that every time we change our JAR file we need to also reload into Postgres. Check the next example and you'll see that I'm reloading the JAR file, creating and testing our new function/method:
+Remember that every time we change our JAR file we need to also reload it into Postgres. Check the next example and you'll see that I'm reloading the JAR file, creating and testing our new function/method:
 
 ```sql
 test=# SELECT sqlj.replace_jar( 'file:///app/pg12/lib/pljavaPart2.jar', 'pljavaPart2', true );
@@ -240,7 +240,7 @@ Great! We now have a method to anonymize data!
 
 ## Triggers
 
-The last topic of this second part will be about “triggers”, and to make it a bit more interesting we will create a trigger to encrypt the sensitive data of our table. The anonymization using the hash function in the previous example is great, but what happens if we have an unauthorized access to the database? The data is saved in plain text!
+The last topic of this second part will be about “triggers”, and to make it a bit more interesting we will create a trigger to encrypt the sensitive data of our table. The anonymization using the hash function in the previous example is great, but what happens if we have unauthorized access to the database? The data is saved in plain text!
 
 To make this example as smaller as possible I won’t bother with securing the keys, we will do it in part 3 of this series when we'll use Java to access external resources using Vault to secure our keys, so keep tuned!
 
@@ -435,7 +435,7 @@ public class CustomerCrypto implements ResultSetProvider {
 }
 ```
 
-The relevant parts of the code above are the "**customerBeforeInsertUpdate**" and "**encryptData**" methods, the former being the static method the database will access. The PL/Java on Postgres expects to find a static method with "**void (TriggerData)**" signature. It will call the "encryptData" method of the "CustomerCrypto" object to do the job. The "encryptData" method will recovers the resultset from the "**NEW**" pointer that is passed through the "TriggerData" object and then change the value to crypt the data. We need to call the trigger in the "**BEFORE**" event because we need to crypt it before it is persisted.
+The relevant parts of the code above are the "**customerBeforeInsertUpdate**" and "**encryptData**" methods, the former being the static method the database will access. The PL/Java on Postgres expects to find a static method with "**void (TriggerData)**" signature. It will call the "encryptData" method of the "CustomerCrypto" object to do the job. The "encryptData" method will recover the resultset from the "**NEW**" pointer that is passed through the "TriggerData" object and then change the value to crypt the data. We need to call the trigger in the "**BEFORE**" event because we need to crypt it before it is persisted.
 
 Another important method is the "**getCustomerCrypto**". We need to be able to get the data decrypted and this method will help us. Here, we use the same technique we used in the previous example where we implemented the "**ResultSetProvider**" interface and manipulated the data before returning the resultset. Take a closer look at the "**assignRowValues**" method and you'll see that we are decrypting the data there with "**Crypto.decrypt**" method!
 
