@@ -435,9 +435,9 @@ public class CustomerCrypto implements ResultSetProvider {
 }
 ```
 
-The relevant parts of the code above are the "**customerBeforeInsertUpdate**" and "**encryptData**" methods, the former being the static method the database will access. The PL/Java on Postgres expects to find a static method with "**void (TriggerData)**" signature. It will call the "encryptData" method of the "CustomerCrypto" object to do the job. The "encryptData" method will recovers the resultset from the "**NEW**" pointer that is passed through the "TriggerData" object and then changes the value to crypt the data. We need to call the trigger in the "**BEFORE**" event because we need to crypt it before it is persisted.
+The relevant parts of the code above are the "**customerBeforeInsertUpdate**" and "**encryptData**" methods, the former being the static method the database will access. The PL/Java on Postgres expects to find a static method with "**void (TriggerData)**" signature. It will call the "encryptData" method of the "CustomerCrypto" object to do the job. The "encryptData" method will recovers the resultset from the "**NEW**" pointer that is passed through the "TriggerData" object and then change the value to crypt the data. We need to call the trigger in the "**BEFORE**" event because we need to crypt it before it is persisted.
 
-Another important method is the "**getCustomerCrypto**". We need to be able to get the data decrypted and this method will help us. We use here the same technique we used in the previous example where we implement the "**ResultSetProvider**" interface and manipulate the data before returning the resultset. Take a closer look at the "**assignRowValues**" method and you'll see that we are decrypting the data there with "**Crypto.decrypt**" method!
+Another important method is the "**getCustomerCrypto**". We need to be able to get the data decrypted and this method will help us. Here, we use the same technique we used in the previous example where we implemented the "**ResultSetProvider**" interface and manipulated the data before returning the resultset. Take a closer look at the "**assignRowValues**" method and you'll see that we are decrypting the data there with "**Crypto.decrypt**" method!
 
 Ok, time to compile the code and check if it really works:
 
@@ -506,7 +506,7 @@ i16jnHGDcTT7CKeq+AxbiJDeaaAmSPpxTZsrX4sXFW4rpNtSmOyuyHZziy8rkN8xSpyhvrmxjC7EYe4b
 
 ```
 
-Awesome, we get our data encrypted! How about the "decrypt" part of the class? Let's check it out:
+Awesome, we get our data encrypted! What about the "decrypt" part of the class? Let's check it out:
 
 ```sql
 test=# CREATE OR REPLACE FUNCTION getCustomerCrypto(int) RETURNS SETOF customer AS 'com.percona.blog.pljava.CustomerCrypto.getCustomerCrypto' LANGUAGE java;
@@ -521,7 +521,7 @@ test=# SELECT * FROM getCustomerCrypto(10);
 test=# 
 ```
 
-Worked like a charm! Here we finish this part 2 and at this point, we are able to query and manipulate objects inside of our database. The next and last article of this series will cover external calls and we will see how to use external resources from PL/Java, don’t miss it!
+Worked like a charm! Here we finish part 2 and at this point, we are able to query and manipulate objects inside of our database. The next and last article of this series will cover external calls, and we'll see how to use external resources from PL/Java. Don’t miss it!
 
 
 <p>
