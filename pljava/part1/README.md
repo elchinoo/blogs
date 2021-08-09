@@ -1,9 +1,11 @@
 # PostgreSQL PL/Java – A How-To, Part 1
+
 > This post is published at https://www.percona.com/blog/postgresql-pl-java-how-to-part-1/
 
 We’ve recently received some questions regarding PL/Java and I found it hard to get clear instructions searching on the internet. It’s not that there is no good information out there, but most of it is either incomplete, outdated, or confusing and I decided to create this short “how-to” and show how to install it and how to get it running with few examples.
 
 ## Installation
+
 I will show here how to install it from sources, first because my platform doesn’t have the compiled binaries, and second because if your platform has the binaries from the package manager you can just install it from there, for example using YUM or APT. Also, note that I’m using PL/Java without the designation “<b>TRUSTED</b>” and a Postgres database superuser for simplicity. I would recommend reading the documentation about users and privileges [here[1]](https://tada.github.io/pljava/use/policy.html).
 
 The versions of the software I’m using here are:
@@ -14,6 +16,7 @@ The versions of the software I’m using here are:
 - Apache Maven 3.6.3
 
 I downloaded the sources from “https://github.com/tada/pljava/releases“, unpackaged and compiled with maven:
+
 ```bash
 wget https://github.com/tada/pljava/archive/refs/tags/V1_6_2.tar.gz
 tar -xf V1_6_2.tar.gz
@@ -73,6 +76,7 @@ demo=#
 ```
 
 Now we have it installed we can check the system catalog if it is indeed there:
+
 ```sql
 demo=# SELECT * FROM pg_language WHERE lanname LIKE 'java%';
 oid    | lanname | lanowner | lanispl | lanpltrusted | lanplcallfoid | laninline | lanvalidator | lanacl
@@ -85,6 +89,7 @@ demo=#
 ```
 
 And test if it is working:
+
 ```sql
 demo=# CREATE FUNCTION getProperty(VARCHAR)
 RETURNS VARCHAR
@@ -103,11 +108,13 @@ demo=#
 It’s working! Time to try something useful.
 
 ## Accessing Database Objects with PL/Java
+
 The majority of the examples I found showed how to do a “hello world” from a Java class or how to calculate a Fibonacci sequence but nothing how to access database objects. Well, nothing wrong with those examples but I suppose that one who installs PL/Java in his database would like to access database objects from inside of a Java function and this is what we gonna do here.
 
 I will use the sample database “**pagila**” that can be found [here[2]](https://www.postgresql.org/ftp/projects/pgFoundry/dbsamples/pagila/) for our tests in this post.
 
 For this first example, I will create a simple class with a static method that will be accessed outside like any Postgres function. The function will receive an integer argument and use it to search the table “customer”, column “customer_id” and will print the customer’s id, full name, email,  and address:
+
 ```java
 package com.percona.blog.pljava;
 
@@ -151,12 +158,14 @@ public class Customers {
 ```
 
 I’ve compiled and created the “jar” file manually with the below commands:
+
 ```bash
 javac com/percona/blog/pljava/Customers.java
 jar -c -f /app/pg12/lib/demo.jar com/percona/blog/pljava/Customers.class
 ```
 
 Note that I’ve created the jar file inside the folder “**/app/pg12/lib**”, keep notes because we’ll use this information in the next step, loading the jar file inside Postgres:
+
 ```sql
 demo=# SELECT sqlj.install_jar( 'file:///app/pg12/lib/demo.jar', 'demo', true );
  install_jar 
@@ -172,6 +181,7 @@ demo=#
 ```
 
 The **install_jar** function has the signature “**install_jar(<jar_url>, <jar_name>, <deploy>)**” and it loads a jar file from a location appointed by an URL into the SQLJ jar repository. It is an error if a jar with the given name already exists in the repository or if the jar doesn’t exist in the URL or the database isn’t able to read it:
+
 ```sql
 demo=# SELECT sqlj.install_jar( 'file:///app/pg12/lib/<strong>demo2.jar</strong>', 'demo', true );
 <strong>ERROR:  java.sql.SQLException: I/O exception reading jar file: /app/pg12/lib/demo2.jar (No such file or directory)
@@ -186,9 +196,11 @@ demo=# SELECT sqlj.install_jar( 'file:///app/pg12/lib/demo.jar', 'demo', true );
 
 demo=# 
 ```
+
 The function **set_classpath** defines a classpath for the given schema, in this example the schema “**public**”. A classpath consists of a colon-separated list of jar names or class names. It’s an error if the given schema does not exist or if one or more jar names references non-existent jars.
 
 The next step is to create the Postgres functions:
+
 ```sql
 demo=# CREATE FUNCTION getCustomerInfo( INT ) RETURNS CHAR AS 
     'com.percona.blog.pljava.Customers.getCustomerInfo( java.lang.Integer )'
@@ -199,6 +211,7 @@ demo=#
 ```
 
 We can now use it:
+
 ```sql
 demo=# SELECT getCustomerInfo(100);
                                  getcustomerinfo                                  
@@ -218,6 +231,7 @@ demo=#
 Sweet, we have our first Java function inside our Postgres demo database.
 
 Now, in our last example here I will add another method to this class, now to list all the payments from a given customer and calculate its total:
+
 ```java
 package com.percona.blog.pljava;
 
@@ -298,12 +312,14 @@ public class Customers {
 ```
 
 Same instructions to compile:
+
 ```bash
 javac com/percona/blog/pljava/Customers.java 
 jar -c -f /app/pg12/lib/demo.jar com/percona/blog/pljava/Customers.class
 ```
 
 Then we need to replace the loaded jar file for the newly created and create the function inside Postgres:
+
 ```sql
 demo=# SELECT sqlj.replace_jar( 'file:///app/pg12/lib/demo.jar', 'demo', true );
  replace_jar 
@@ -319,6 +335,7 @@ demo=#
 ```
 
 And the result is:
+
 ```sql
 test=# SELECT getCustomerTotal(9);
                                              getcustomertotal                                             
