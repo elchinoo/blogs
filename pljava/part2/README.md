@@ -1,8 +1,8 @@
 # PostgreSQL PL/Java – A How-To, Part 2
 
-We discussed how to install and created a simple class in the first part of this series where we ran a SELECT and returned one row with one single column with a formatted text. Now it's time to expand and see how to return multiple tuples. 
+We discussed how to install and create a simple class in the first part of this series where we ran a SELECT and returned one row with one column with a formatted text. Now it's time to expand and see how to return multiple tuples.
 
-A little disclaimer here, I'm not going to comment much on the Java code as this is not intended to be a Java tutorial and the examples here are just of educational purpose, not intended to be of high performance neither used in production!
+A little disclaimer here, I'm not going to comment much on the Java code because this is not intended to be a Java tutorial and the examples here are just for educational purpose, not intended to be of high performance nor used in production!
 
 ## Returning a table structure
 
@@ -53,7 +53,7 @@ public class CustomerResultSet implements ResultSetHandle {
 }
 ```
 
-Note that we are implementing the **org.postgresql.pljava.ResultSetHandle** interface provided by PL/Java. We need it because we are returning a complex object and the ResultSetHandle interface is appropriated when we won't manipulate the returned tuples.
+Note that we are implementing the **org.postgresql.pljava.ResultSetHandle** interface provided by PL/Java. We need it because we are returning a complex object and the ResultSetHandle interface is appropriated when we don't need to manipulate the returned tuples.
 
 Now that we are using PL/Java objects we need to tell the compiler where to find those references and for this first example here we need the **pljava-api jar**, which in my case happens to be **pljava-api-1.6.2.jar**. If you remember from the first post I've compiled the PL/Java I'm using here and my jar is located at "**~/pljava-1_6_2/pljava-api/target/pljava-api-1.6.2.jar**" and the compilation command will be:
 
@@ -205,7 +205,7 @@ public class CustomerHash implements ResultSetProvider {
 }
 ```
 
-The number of classes are increasing, then instead of mentioning them one by one lets just use the "*.java" to build the classes and the "*.class" to create the jar:
+The number of classes is increasing, then instead of mentioning them one by one lets just use the "*.java" to build the classes and the "*.class" to create the jar:
 
 ```bash
 javac -cp "~/pljava-1_6_2/build/pljava-api-1.6.2.jar" com/percona/blog/pljava/*.java
@@ -244,7 +244,7 @@ The last topic of this second part will be about “triggers” and to make it a
 
 To make this example as smaller as possible I won’t bother with securing the keys, we will do it in part 3 of this series when we will use Java to access external resources, in our case we’ll use Vault to secure our keys, so keep tuned!
 
-Ok, the first thing we need to do is to create the pair of keys we need to encrypt/decrypt our data. I will use "**openssl**" to create them and will store them into a table named "keys"!
+Ok, the first thing we need to do is to create the pair of keys we need to encrypt/decrypt our data. I will use "**OpenSSL**" to create them and will store them into a table named "keys"!
 
 ```bash
 openssl genrsa -out keypair.pem 2048
@@ -506,7 +506,7 @@ i16jnHGDcTT7CKeq+AxbiJDeaaAmSPpxTZsrX4sXFW4rpNtSmOyuyHZziy8rkN8xSpyhvrmxjC7EYe4b
 
 ```
 
-Awesome, we get our data encrypted! How about the decrypt part of the class? Let's check it out:
+Awesome, we get our data encrypted! How about the "decrypt" part of the class? Let's check it out:
 
 ```sql
 test=# CREATE OR REPLACE FUNCTION getCustomerCrypto(int) RETURNS SETOF customer AS 'com.percona.blog.pljava.CustomerCrypto.getCustomerCrypto' LANGUAGE java;
