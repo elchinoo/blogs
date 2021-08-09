@@ -55,14 +55,14 @@ public class CustomerResultSet implements ResultSetHandle {
 
 Note that we are implementing the **org.postgresql.pljava.ResultSetHandle** interface provided by PL/Java. We need it because we are returning a complex object and the ResultSetHandle interface is appropriated when we don't need to manipulate the returned tuples.
 
-Now that we are using PL/Java objects we need to tell the compiler where to find those references and for this first example here we need the **pljava-api jar**, which in my case happens to be **pljava-api-1.6.2.jar**. If you remember from the first post I've compiled the PL/Java I'm using here and my jar is located at "**~/pljava-1_6_2/pljava-api/target/pljava-api-1.6.2.jar**" and the compilation command will be:
+Now that we are using PL/Java objects we need to tell the compiler where to find those references and for this first example here we need the **pljava-api jar**, which in my case happens to be **pljava-api-1.6.2.jar**. If you remember from the first post I've compiled, the PL/Java I'm using here and my JAR file is located at "**~/pljava-1_6_2/pljava-api/target/pljava-api-1.6.2.jar**" and the compilation command will be:
 
 ```bash
 javac -cp "~/pljava-1_6_2/pljava-api/target/pljava-api-1.6.2.jar" com/percona/blog/pljava/CustomerResultSet.java
 jar -c -f /app/pg12/lib/pljavaPart2.jar com/percona/blog/pljava/CustomerResultSet.class
 ```
 
-With my new JAR file created I can then install it into Postgres and create the function "**getCustomerLimit10()**":
+With my new JAR file created, I can then install it into Postgres and create the function "**getCustomerLimit10()**":
 
 ```sql
 SELECT sqlj.install_jar( 'file:///app/pg12/lib/pljavaPart2.jar', 'pljavaPart2', true );
@@ -91,11 +91,11 @@ test=# SELECT * FROM getCustomerLimit10();
 test=# 
 ```
 
-## Manipulating the result before return
+## Manipulating the result before returning
 
-Return the result of a plain SQL has its usage like visibility/permissioning control but we usually need to manipulate the results of a query before return and to do this we can implement the interface "**org.postgresql.pljava.ResultSetProvider**". 
+Returning the result of a plain SQL has its usage like visibility/permissioning control, but we usually need to manipulate the results of a query before returning and to do this we can implement the interface "**org.postgresql.pljava.ResultSetProvider**". 
 
-In the below example I will implement a simple method to anonymize sensitive data with a hash function. I will create a helper class to deal with the hash and cryptographic functions to keep the CustomerResultSet class clean:
+In the following example, I will implement a simple method to anonymize sensitive data with a hash function. I will create a helper class to deal with the hash and cryptographic functions to keep the CustomerResultSet class clean:
 
 ```java
 /**
@@ -212,7 +212,7 @@ javac -cp "~/pljava-1_6_2/build/pljava-api-1.6.2.jar" com/percona/blog/pljava/*.
 jar -c -f /app/pg12/lib/pljavaPart2.jar com/percona/blog/pljava/*.class
 ```
 
-Remember that every time we change our JAR file we need to reload it from Postgres. We'll do it below and also create and test our new function/method:
+Remember that every time we change our JAR file we need to also reload into Postgres. Check the next example and you'll see that I'm reloading the JAR file, creating and testing our new function/method:
 
 ```sql
 test=# SELECT sqlj.replace_jar( 'file:///app/pg12/lib/pljavaPart2.jar', 'pljavaPart2', true );
@@ -240,11 +240,11 @@ Great! We now have a method to anonymize data!
 
 ## Triggers
 
-The last topic of this second part will be about “triggers” and to make it a bit interesting we will create a trigger to encrypt the sensitive data of our table. The anonymization using the hash function in the previous example is great but what happens if we have unauthorized access to the database? The data is saved in plain text!
+The last topic of this second part will be about “triggers”, and to make it a bit more interesting we will create a trigger to encrypt the sensitive data of our table. The anonymization using the hash function in the previous example is great, but what happens if we have an unauthorized access to the database? The data is saved in plain text!
 
-To make this example as smaller as possible I won’t bother with securing the keys, we will do it in part 3 of this series when we will use Java to access external resources, in our case we’ll use Vault to secure our keys, so keep tuned!
+To make this example as smaller as possible I won’t bother with securing the keys, we will do it in part 3 of this series when we'll use Java to access external resources using Vault to secure our keys, so keep tuned!
 
-Ok, the first thing we need to do is to create the pair of keys we need to encrypt/decrypt our data. I will use "**OpenSSL**" to create them and will store them into a table named "keys"!
+Ok, the first thing we need to do is to create the pair of keys we need to encrypt/decrypt our data. I'll use "**OpenSSL**" to create them and gonna store them into a table named "keys"!
 
 ```bash
 openssl genrsa -out keypair.pem 2048
@@ -252,7 +252,7 @@ openssl pkcs8 -topk8 -nocrypt -in keypair.pem -outform PEM -out private.pem
 openssl rsa -in keypair.pem -outform PEM -pubout -out public.pem
 ```
 
-Now that we have the keys we need to sanitize the data to remove the header and footer data from both the private and public keys and also remove all break-lines or else our Java code will complain:
+Now that we have the keys we need to sanitize the key files to remove the header and footer data from both the private and public keys, also remove all break-lines or else our Java code will complain:
 
 ```bash
 echo -n "CREATE TABLE keys(id int primary key, priv varchar not null, pub varchar not null); INSERT INTO keys VALUES(1, '" > keys.sql
@@ -264,13 +264,13 @@ echo -n "');" >> keys.sql
 psql test < keys.sql
 ```
 
-It will look like something like this when sanitized:
+It will look like this when sanitized:
 
 ```sql
 CREATE TABLE keys(id int primary key, priv varchar not null, pub varchar not null); INSERT INTO keys VALUES(1, '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');
 ```
 
-After done with populating the table we should have a nice table with both private and public keys. Now is the time to create our Java classes. I will reuse the "**Crypto**" class for the cryptographic functions and will create a new class to add our trigger functions. I will only add the relevant part of the Crypto class here but you can find the code described here on my [GitHub page here[1]](https://github.com/elchinoo/blogs/tree/main/pljava) including Part 1 and Part 3 when released. Let's get to the code:
+After done with populating the table we should have a nice table with both private and public keys. Now is the time to create our Java classes. I'll reuse the "**Crypto**" class for the cryptographic functions and create a new class to add our trigger functions. I'll only add the relevant part of the Crypto class here, but you can find the code described here on my [GitHub page here[1]](https://github.com/elchinoo/blogs/tree/main/pljava) including Part 1 and Part 3 when released. Let's get to the code:
 
 ```java
 /**
@@ -323,7 +323,7 @@ After done with populating the table we should have a nice table with both priva
 	}
 ```
 
-Now we can implement the class with both our trigger function to encrypt and also a function to decrypt when we need to SELECT data:
+Now we can implement the class with both functions - the trigger function to encrypt and a function to decrypt when we need to SELECT the data:
 
 ```java
 package com.percona.blog.pljava;
@@ -435,7 +435,7 @@ public class CustomerCrypto implements ResultSetProvider {
 }
 ```
 
-The relevant parts of the code above are the "**customerBeforeInsertUpdate**" and "**encryptData**" methods. The former is the static method the database will access. The PL/Java on Postgres expects to find a static method with "**void (TriggerData)**" signature. It will then call the "encryptData" method of the CustomerCrypto object to do the job. The "encryptData" method then recovers the resultset from the "**NEW**" pointer that is passed through the TriggerData object and changes the value to crypt the data. We need to call the trigger in the BEFORE event because we need to crypt it before it is persisted.
+The relevant parts of the code above are the "**customerBeforeInsertUpdate**" and "**encryptData**" methods, the former being the static method the database will access. The PL/Java on Postgres expects to find a static method with "**void (TriggerData)**" signature. It will call the "encryptData" method of the "CustomerCrypto" object to do the job. The "encryptData" method will recovers the resultset from the "**NEW**" pointer that is passed through the "TriggerData" object and then changes the value to crypt the data. We need to call the trigger in the "**BEFORE**" event because we need to crypt it before it is persisted.
 
 Another important method is the "**getCustomerCrypto**". We need to be able to get the data decrypted and this method will help us. We use here the same technique we used in the previous example where we implement the "**ResultSetProvider**" interface and manipulate the data before returning the resultset. Take a closer look at the "**assignRowValues**" method and you'll see that we are decrypting the data there with "**Crypto.decrypt**" method!
 
