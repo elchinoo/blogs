@@ -1,5 +1,7 @@
 # PostgreSQL PL/Java – A How-To, Part 2
 
+> This post is published at https://www.percona.com/blog/postgresql-pl-java-a-how-to-part-2-how-to-manipulate-and-return-tuples
+
 We discussed how to install and create a simple class in the first part of this series where we ran a SELECT and returned one row with one column with a formatted text. Now it's time to expand and see how to return multiple tuples.
 
 A little disclaimer here, I'm not going to comment much on the Java code because this is not intended to be a Java tutorial. The examples here are just for educational purposes, not intended to be of high performance or used in production!
