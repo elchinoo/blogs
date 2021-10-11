@@ -11,16 +11,16 @@ I will show here how to install it from sources, first because my platform doesn
 The versions of the software I’m using here are:
 
 - PostgreSQL 12.7
-- PL/Java 1.6.2
+- PL/Java 1.6.3
 - OpenJDK 11
 - Apache Maven 3.6.3
 
 I downloaded the sources from “https://github.com/tada/pljava/releases“, unpackaged and compiled with maven:
 
 ```bash
-wget https://github.com/tada/pljava/archive/refs/tags/V1_6_2.tar.gz
-tar -xf V1_6_2.tar.gz
-cd pljava-1_6_2
+wget https://github.com/tada/pljava/archive/refs/tags/V1_6_3.tar.gz
+tar -xf V1_6_3.tar.gz
+cd pljava-1_6_3
 mvn clean install
 java -jar pljava-packaging/target/pljava-pg12.jar
 ```
@@ -50,8 +50,8 @@ Not exactly what I was expecting but I got a good hint: “**HINT: SET pljava.li
 demo=# SET pljava.libjvm_location TO '/usr/lib/jvm/java-11-openjdk-11.0.11.0.9-5.fc34.x86_64/lib/server/libjvm.so';
 NOTICE: PL/Java loaded
 DETAIL: versions:
-PL/Java native code (1.6.2)
-PL/Java common code (1.6.2)
+PL/Java native code (1.6.3)
+PL/Java common code (1.6.3)
 Built for (PostgreSQL 12.7 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 11.1.1 20210531 (Red Hat 11.1.1-3), 64-bit)
 Loaded in (PostgreSQL 12.7 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 11.1.1 20210531 (Red Hat 11.1.1-3), 64-bit)
 OpenJDK Runtime Environment (11.0.11+9)
@@ -105,7 +105,42 @@ getproperty
 demo=# 
 ```
 
-It’s working! Time to try something useful.
+It’s working! But what about that second message after I set the libjvm location? The one that said “**PL/Java is now installed, but not as an extension**”? Can that be right?
+
+```sql
+demo=# \dx
+                 List of installed extensions
+  Name   | Version |   Schema   |         Description          
+---------+---------+------------+------------------------------
+ plpgsql | 1.0     | pg_catalog | PL/pgSQL procedural language
+(1 row)
+
+demo=# 
+```
+
+PL/Java isn’t there, because the “**CREATE EXTENSION**” did not succeed, and the installation only completed after I supplied the libjvm setting. PL/Java will work, but I won’t be able to drop it with “**DROP EXTENSION**”, or upgrade it to the next release with “**ALTER EXTENSION pljava UPDATE**”. I could drop parts of it by mistake because Postgres doesn’t know they belong together. It would be better as an extension.
+
+That message also had a good hint for how to finish the extension creation, after using “**\c**” to start a new session:
+
+```sql
+demo=# \c
+You are now connected to database "demo" as user "postgres".
+demo=# CREATE EXTENSION pljava FROM unpackaged;
+CREATE EXTENSION
+demo=# \dx
+                                 List of installed extensions
+  Name   | Version |   Schema   |                         Description                          
+---------+---------+------------+--------------------------------------------------------------
+ pljava  | 1.6.3   | sqlj       | PL/Java procedural language (https://tada.github.io/pljava/)
+ plpgsql | 1.0     | pg_catalog | PL/pgSQL procedural language
+(2 rows)
+
+demo=# 
+```
+
+There, that has done it. Those last steps will be slightly different in PostgreSQL 13 or later, but the hint will always show what to do.
+
+Now it’s time to try something useful.
 
 ## Accessing Database Objects with PL/Java
 
@@ -198,6 +233,8 @@ demo=#
 ```
 
 The function **set_classpath** defines a classpath for the given schema, in this example the schema “**public**”. A classpath consists of a colon-separated list of jar names or class names. It’s an error if the given schema does not exist or if one or more jar names references non-existent jars.
+
+What did the final **true** in that “**install_jar**” do? Nothing. But we’ll make it do something later.
 
 The next step is to create the Postgres functions:
 
@@ -372,8 +409,45 @@ test=# SELECT getCustomerTotal(9);
 
 test=#
 ```
+With this last example, we are able to access objects, loop through a resultset, and return the result back as a single object like a TEXT. But the example can still be improved. Instead of having to install the jar and then give separate SQL “**CREATE FUNCTION**” commands, how about putting the commands *in* the jar?
 
-We finish this part here with this last example. At this point, we are able to access objects, loop through a resultset, and return the result back as a single object like a TEXT. I will discuss how to return an array/resultset, how to use PL/Java functions within triggers, and how to use external resources in part two and part three of this article, stay tuned!
+That would mean writing them in a “deployment descriptor” file, normally with a name that ends in “.ddr”. The syntax is a little odd but not hard to get used to:
+
+```bash
+$ cat demo.ddr
+SQLActions[]={
+"BEGIN INSTALL
+CREATE FUNCTION getCustomerInfo( INT ) RETURNS CHAR AS
+    'com.percona.blog.pljava.Customers.getCustomerInfo( java.lang.Integer )'
+LANGUAGE java;
+CREATE FUNCTION getCustomerTotal( INT ) RETURNS CHAR AS
+    'com.percona.blog.pljava.Customers.getCustomerTotal( java.lang.Integer )'
+LANGUAGE java;
+END INSTALL",
+"BEGIN REMOVE
+DROP FUNCTION getCustomerInfo( INT );
+DROP FUNCTION getCustomerTotal( INT );
+END REMOVE"
+}
+$ 
+```
+
+We also need a “manifest file” for the jar, just to name the “demo.ddr” file and identify it as a deployment descriptor:
+
+```bash
+$ cat demo.mf
+Manifest-Version: 1.0
+Name: demo.ddr
+SQLJDeploymentDescriptor: TRUE
+$ jar -c -f /app/pg12/lib/demo.jar -m demo.mf demo.ddr com/percona/blog/pljava/Customers.class
+$ 
+```
+
+Now the jar file contains the manifest and the deployment descriptor, and when PL/Java’s “**install_jar**” or “**remove_jar**” or “**replace_jar**” are given that last argument of “**true**”, they will execute the install actions or remove actions automatically. (For “**replace_jar**”, the remove actions of the old jar execute first, then the install actions of the new jar.)
+
+That’s more convenient than having to remember separate SQL commands when installing the jar, but writing that descriptor file by hand still seems like unnecessary work. What if it contained a typo, or got out of date with changes to the Java classes? Can't the Java compiler write that file for us, at the same time it makes the class files?
+
+I will discuss that, along with how to return an array/resultset, how to use PL/Java functions within triggers, and how to use external resources in part two and part three of this article, stay tuned!
 
 <p>
 <br />

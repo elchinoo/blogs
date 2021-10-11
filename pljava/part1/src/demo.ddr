@@ -1,0 +1,14 @@
+SQLActions[]={
+"BEGIN INSTALL
+CREATE FUNCTION getCustomerInfo( INT ) RETURNS CHAR AS
+    'com.percona.blog.pljava.Customers.getCustomerInfo( java.lang.Integer )'
+LANGUAGE java;
+CREATE FUNCTION getCustomerTotal( INT ) RETURNS CHAR AS
+    'com.percona.blog.pljava.Customers.getCustomerTotal( java.lang.Integer )'
+LANGUAGE java;
+END INSTALL",
+"BEGIN REMOVE
+DROP FUNCTION getCustomerInfo( INT );
+DROP FUNCTION getCustomerTotal( INT );
+END REMOVE"
+}
