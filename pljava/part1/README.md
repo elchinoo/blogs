@@ -239,7 +239,7 @@ What did the final **true** in that “**install_jar**” do? Nothing. But we’
 The next step is to create the Postgres functions:
 
 ```sql
-demo=# CREATE FUNCTION getCustomerInfo( INT ) RETURNS CHAR AS 
+demo=# CREATE FUNCTION getCustomerInfo( INT ) RETURNS VARCHAR AS 
     'com.percona.blog.pljava.Customers.getCustomerInfo( java.lang.Integer )'
 LANGUAGE java;
 CREATE FUNCTION
@@ -363,7 +363,7 @@ demo=# SELECT sqlj.replace_jar( 'file:///app/pg12/lib/demo.jar', 'demo', true );
 -------------
 (1 row)
 
-demo=# CREATE FUNCTION getCustomerTotal( INT ) RETURNS CHAR AS 
+demo=# CREATE FUNCTION getCustomerTotal( INT ) RETURNS VARCHAR AS 
     'com.percona.blog.pljava.Customers.getCustomerTotal( java.lang.Integer )'
 LANGUAGE java;
 CREATE FUNCTION
@@ -417,10 +417,10 @@ That would mean writing them in a “deployment descriptor” file, normally wit
 $ cat demo.ddr
 SQLActions[]={
 "BEGIN INSTALL
-CREATE FUNCTION getCustomerInfo( INT ) RETURNS CHAR AS
+CREATE FUNCTION getCustomerInfo( INT ) RETURNS VARCHAR AS
     'com.percona.blog.pljava.Customers.getCustomerInfo( java.lang.Integer )'
 LANGUAGE java;
-CREATE FUNCTION getCustomerTotal( INT ) RETURNS CHAR AS
+CREATE FUNCTION getCustomerTotal( INT ) RETURNS VARCHAR AS
     'com.percona.blog.pljava.Customers.getCustomerTotal( java.lang.Integer )'
 LANGUAGE java;
 END INSTALL",
