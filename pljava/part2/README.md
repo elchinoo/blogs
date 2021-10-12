@@ -27,6 +27,8 @@ import java.sql.SQLException;
 
 import org.postgresql.pljava.ResultSetHandle;
 
+import org.postgresql.pljava.annotation.Function;
+
 public class CustomerResultSet implements ResultSetHandle {
 	private Connection conn;
 	private PreparedStatement stmt;
@@ -49,6 +51,7 @@ public class CustomerResultSet implements ResultSetHandle {
 		return stmt.executeQuery();
 	}
 
+	@Function(type = "customer")
 	public static ResultSetHandle getCustomerPayments() throws SQLException {
 		return new CustomerResultSet();
 	}
@@ -57,19 +60,25 @@ public class CustomerResultSet implements ResultSetHandle {
 
 Note that we are implementing the **org.postgresql.pljava.ResultSetHandle** interface provided by PL/Java. We need it because we are returning a complex object and the ResultSetHandle interface is appropriated when we don't need to manipulate the returned tuples.
 
-Now that we are using PL/Java objects we need to tell the compiler where to find those references and for this first example here we need the **pljava-api jar**, which in my case happens to be **pljava-api-1.6.2.jar**. If you remember from the first post I've compiled, the PL/Java I'm using here and my JAR file is located at "**~/pljava-1_6_2/pljava-api/target/pljava-api-1.6.2.jar**" and the compilation command will be:
+The other thing new here is the **@Function** annotation on the Postgres-facing method. That will tell the Java compiler to write a deployment descriptor file with the SQL to declare the function in Postgres. This one needs the **type=customer** because the Java return type **ResultSetHandle** isn't enough to guess what the SQL type should be.
+
+Now that we are using PL/Java objects we need to tell the compiler where to find those references and for this first example here we need the **pljava-api jar**, which in my case happens to be **pljava-api-1.6.3.jar**. If you remember from the first post I've compiled, the PL/Java I'm using here and my JAR file is located at "**~/pljava-1_6_3/pljava-api/target/pljava-api-1.6.3.jar**" and the compilation command will be:
 
 ```bash
-javac -cp "~/pljava-1_6_2/pljava-api/target/pljava-api-1.6.2.jar" com/percona/blog/pljava/CustomerResultSet.java
-jar -c -f /app/pg12/lib/pljavaPart2.jar com/percona/blog/pljava/CustomerResultSet.class
+javac -cp "~/pljava-1_6_3/pljava-api/target/pljava-api-1.6.3.jar" com/percona/blog/pljava/CustomerResultSet.java
 ```
 
-With my new JAR file created, I can then install it into Postgres and create the function "**getCustomerLimit10()**":
+When the compiler is done, we can see that it wrote the class file and also a "**pljava.ddr**" file. We can put both of those files into the jar, along with the manifest file from part 1 (only changing its "**Name:**" line to say **pljava.ddr**).
+
+```bash
+jar -c -f /app/pg12/lib/pljavaPart2.jar -m demo.mf pljava.ddr com/percona/blog/pljava/CustomerResultSet.class
+```
+
+With my new JAR file created, I can then install it into Postgres. I don't have to separately create the function "**getCustomerLimit10()**" because the deployment descriptor already did:
 
 ```sql
 SELECT sqlj.install_jar( 'file:///app/pg12/lib/pljavaPart2.jar', 'pljavaPart2', true );
 SELECT sqlj.set_classpath( 'public', 'pljavaPart2' );
-CREATE OR REPLACE FUNCTION getCustomerLimit10() RETURNS SETOF customer AS 'com.percona.blog.pljava.CustomerResultSet.getCustomerLimit10' LANGUAGE java;
 ```
 
 The result of the function call is:
@@ -152,6 +161,8 @@ import java.util.logging.Logger;
 
 import org.postgresql.pljava.ResultSetProvider;
 
+import org.postgresql.pljava.annotation.Function;
+
 public class CustomerHash implements ResultSetProvider {
 	private final Connection conn;
 	private final PreparedStatement stmt;
@@ -200,6 +211,7 @@ public class CustomerHash implements ResultSetProvider {
 		return true;
 	}
 	
+	@Function(type = "customer")
 	public static ResultSetProvider getCustomerAnonymized(int id) throws SQLException, NoSuchAlgorithmException {
 		return new CustomerHash(id);
 	}
@@ -210,11 +222,11 @@ public class CustomerHash implements ResultSetProvider {
 The number of classes is increasing, then instead of mentioning them one by one let's just use the "*.java" to build the classes and the "*.class" to create the jar:
 
 ```bash
-javac -cp "~/pljava-1_6_2/build/pljava-api-1.6.2.jar" com/percona/blog/pljava/*.java
-jar -c -f /app/pg12/lib/pljavaPart2.jar com/percona/blog/pljava/*.class
+javac -cp "~/pljava-1_6_3/build/pljava-api-1.6.3.jar" com/percona/blog/pljava/*.java
+jar -c -f /app/pg12/lib/pljavaPart2.jar -m demo.mf pljava.ddr com/percona/blog/pljava/*.class
 ```
 
-Remember that every time we change our JAR file we need to also reload it into Postgres. Check the next example and you'll see that I'm reloading the JAR file, creating and testing our new function/method:
+Remember that every time we change our JAR file we need to also reload it into Postgres. Check the next example and you'll see that I'm reloading the JAR file, and testing our new function/method:
 
 ```sql
 test=# SELECT sqlj.replace_jar( 'file:///app/pg12/lib/pljavaPart2.jar', 'pljavaPart2', true );
@@ -222,9 +234,6 @@ test=# SELECT sqlj.replace_jar( 'file:///app/pg12/lib/pljavaPart2.jar', 'pljavaP
 -------------
  
 (1 row)
-
-test=# CREATE OR REPLACE FUNCTION getCustomerAnonymized(int) RETURNS SETOF customer AS 'com.percona.blog.pljava.CustomerHash.getCustomerAnonymized' LANGUAGE java;
-CREATE FUNCTION
 
 test=# SELECT * FROM getCustomerAnonymized(9);
  customer_id | store_id |     first_name      |              last_name              |                  email                  | address_id | activebool | create_date |     last_update     | ac
@@ -349,6 +358,12 @@ import javax.crypto.NoSuchPaddingException;
 import org.postgresql.pljava.ResultSetProvider;
 import org.postgresql.pljava.TriggerData;
 
+import org.postgresql.pljava.annotation.Function;
+import org.postgresql.pljava.annotation.Trigger;
+import static org.postgresql.pljava.annotation.Trigger.Called.BEFORE;
+import static org.postgresql.pljava.annotation.Trigger.Event.INSERT;
+import static org.postgresql.pljava.annotation.Trigger.Scope.ROW;
+
 public class CustomerCrypto implements ResultSetProvider {
 	private final String m_url = "jdbc:default:connection";
 	private final Connection conn;
@@ -422,11 +437,19 @@ public class CustomerCrypto implements ResultSetProvider {
 		_new.updateString("email", Crypto.encrypt(_new.getString("email"), this.publicKey));
 	}
 	
+	@Function(
+		triggers = @Trigger(
+			called = BEFORE, events = INSERT, scope = ROW,
+			table = "customer",
+			name = "tg_customerBeforeInsertUpdate"
+		)
+	)
 	public static void customerBeforeInsertUpdate(TriggerData td) throws SQLException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException, NoSuchPaddingException, NoSuchAlgorithmException {
 		CustomerCrypto ret = new CustomerCrypto();
 		ret.encryptData(td);
 	}
 
+	@Function(type = "customer")
 	public static ResultSetProvider getCustomerCrypto(int id) throws SQLException, NoSuchAlgorithmException {
 		CustomerCrypto ret = new CustomerCrypto();
 		ret.processQuery(id);
@@ -444,24 +467,14 @@ Another important method is the "**getCustomerCrypto**". We need to be able to g
 Ok, time to compile the code and check if it really works:
 
 ```bash
-javac -cp "/v01/proj/percona/blog/pljava/pljava-1_6_2/build/pljava-api-1.6.2.jar" com/percona/blog/pljava/*.java
-jar -c -f /app/pg12/lib/pljavaPart2.jar com/percona/blog/pljava/*.class
+javac -cp "/v01/proj/percona/blog/pljava/pljava-1_6_3/build/pljava-api-1.6.3.jar" com/percona/blog/pljava/*.java
+jar -c -f /app/pg12/lib/pljavaPart2.jar -m demo.mf pljava.ddr com/percona/blog/pljava/*.class
 ```
 
 And create the database objects:
 
 ```sql
 SELECT sqlj.replace_jar( 'file:///app/pg12/lib/pljavaPart2.jar', 'pljavaPart2', true );
-
-CREATE FUNCTION customerBeforeInsertUpdate()
-			RETURNS trigger
-			AS 'com.percona.blog.pljava.CustomerCrypto.customerBeforeInsertUpdate'
-			LANGUAGE java;
-
-CREATE TRIGGER tg_customerBeforeInsertUpdate
-			BEFORE INSERT ON customer
-			FOR EACH ROW
-			EXECUTE PROCEDURE customerBeforeInsertUpdate();
 ```
 
 At this point, our data isn't encrypted yet but we can do it with a noop update and the trigger will do its magic:
@@ -511,9 +524,6 @@ i16jnHGDcTT7CKeq+AxbiJDeaaAmSPpxTZsrX4sXFW4rpNtSmOyuyHZziy8rkN8xSpyhvrmxjC7EYe4b
 Awesome, we get our data encrypted! What about the "decrypt" part of the class? Let's check it out:
 
 ```sql
-test=# CREATE OR REPLACE FUNCTION getCustomerCrypto(int) RETURNS SETOF customer AS 'com.percona.blog.pljava.CustomerCrypto.getCustomerCrypto' LANGUAGE java;
-CREATE FUNCTION
-
 test=# SELECT * FROM getCustomerCrypto(10);
  customer_id | store_id | first_name | last_name |               email               | address_id | activebool | create_date |     last_update     | active 
 -------------+----------+------------+-----------+-----------------------------------+------------+------------+-------------+---------------------+--------
