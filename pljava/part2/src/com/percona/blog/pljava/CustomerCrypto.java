@@ -23,6 +23,7 @@ import org.postgresql.pljava.annotation.Function;
 import org.postgresql.pljava.annotation.Trigger;
 import static org.postgresql.pljava.annotation.Trigger.Called.BEFORE;
 import static org.postgresql.pljava.annotation.Trigger.Event.INSERT;
+import static org.postgresql.pljava.annotation.Trigger.Event.UPDATE;
 import static org.postgresql.pljava.annotation.Trigger.Scope.ROW;
 
 public class CustomerCrypto implements ResultSetProvider {
@@ -51,7 +52,7 @@ public class CustomerCrypto implements ResultSetProvider {
 	
 	public void processQuery(int id) throws SQLException, NoSuchAlgorithmException {
 		String query;
-		query = "SELECT * FROM customer2 WHERE customer_id = ?";
+		query = "SELECT * FROM customer WHERE customer_id = ?";
 		stmt = conn.prepareStatement(query);
 		stmt.setInt(1, id);
 		rs = stmt.executeQuery();
@@ -100,8 +101,8 @@ public class CustomerCrypto implements ResultSetProvider {
 	
 	@Function(
 		triggers = @Trigger(
-			called = BEFORE, events = INSERT, scope = ROW,
-			table = "customer",
+			called = BEFORE, events = { INSERT, UPDATE },
+			scope = ROW, table = "customer",
 			name = "tg_customerBeforeInsertUpdate"
 		)
 	)

@@ -362,6 +362,7 @@ import org.postgresql.pljava.annotation.Function;
 import org.postgresql.pljava.annotation.Trigger;
 import static org.postgresql.pljava.annotation.Trigger.Called.BEFORE;
 import static org.postgresql.pljava.annotation.Trigger.Event.INSERT;
+import static org.postgresql.pljava.annotation.Trigger.Event.UPDATE;
 import static org.postgresql.pljava.annotation.Trigger.Scope.ROW;
 
 public class CustomerCrypto implements ResultSetProvider {
@@ -439,8 +440,8 @@ public class CustomerCrypto implements ResultSetProvider {
 	
 	@Function(
 		triggers = @Trigger(
-			called = BEFORE, events = INSERT, scope = ROW,
-			table = "customer",
+			called = BEFORE, events = { INSERT, UPDATE },
+			scope = ROW, table = "customer",
 			name = "tg_customerBeforeInsertUpdate"
 		)
 	)
@@ -460,7 +461,7 @@ public class CustomerCrypto implements ResultSetProvider {
 }
 ```
 
-The relevant parts of the code above are the "**customerBeforeInsertUpdate**" and "**encryptData**" methods, the former being the static method the database will access. The PL/Java on Postgres expects to find a static method with "**void (TriggerData)**" signature. It will call the "encryptData" method of the "CustomerCrypto" object to do the job. The "encryptData" method will recover the resultset from the "**NEW**" pointer that is passed through the "TriggerData" object and then change the value to crypt the data. We need to call the trigger in the "**BEFORE**" event because we need to crypt it before it is persisted.
+The relevant parts of the code above are the "**customerBeforeInsertUpdate**" and "**encryptData**" methods, the former being the static method the database will access. The PL/Java on Postgres expects to find a static method with "**void (TriggerData)**" signature. It will call the "encryptData" method of the "CustomerCrypto" object to do the job. The "encryptData" method will recover the resultset from the "**NEW**" pointer that is passed through the "TriggerData" object and then change the value to crypt the data. We need to call the trigger in the "**BEFORE**" event because we need to crypt it before it is persisted. The **name=** only matters if we want a different name for the trigger than what PL/Java would pick by default, `trg_br_iu` (before row, insert, update). The default name doesn’t include the table name, because Postgres doesn’t mind if triggers on different tables have matching names.
 
 Another important method is the "**getCustomerCrypto**". We need to be able to get the data decrypted and this method will help us. Here, we use the same technique we used in the previous example where we implemented the "**ResultSetProvider**" interface and manipulated the data before returning the resultset. Take a closer look at the "**assignRowValues**" method and you'll see that we are decrypting the data there with "**Crypto.decrypt**" method!
 
