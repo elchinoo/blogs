@@ -11,6 +11,8 @@ import java.util.logging.Logger;
 
 import org.postgresql.pljava.ResultSetProvider;
 
+import org.postgresql.pljava.annotation.Function;
+
 public class CustomerHash implements ResultSetProvider {
 	private final Connection conn;
 	private final PreparedStatement stmt;
@@ -59,6 +61,7 @@ public class CustomerHash implements ResultSetProvider {
 		return true;
 	}
 	
+	@Function(type = "customer")
 	public static ResultSetProvider getCustomerAnonymized(int id) throws SQLException, NoSuchAlgorithmException {
 		return new CustomerHash(id);
 	}

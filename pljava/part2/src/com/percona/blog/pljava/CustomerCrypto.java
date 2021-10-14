@@ -19,6 +19,13 @@ import javax.crypto.NoSuchPaddingException;
 import org.postgresql.pljava.ResultSetProvider;
 import org.postgresql.pljava.TriggerData;
 
+import org.postgresql.pljava.annotation.Function;
+import org.postgresql.pljava.annotation.Trigger;
+import static org.postgresql.pljava.annotation.Trigger.Called.BEFORE;
+import static org.postgresql.pljava.annotation.Trigger.Event.INSERT;
+import static org.postgresql.pljava.annotation.Trigger.Event.UPDATE;
+import static org.postgresql.pljava.annotation.Trigger.Scope.ROW;
+
 public class CustomerCrypto implements ResultSetProvider {
 	private final String m_url = "jdbc:default:connection";
 	private final Connection conn;
@@ -45,7 +52,7 @@ public class CustomerCrypto implements ResultSetProvider {
 	
 	public void processQuery(int id) throws SQLException, NoSuchAlgorithmException {
 		String query;
-		query = "SELECT * FROM customer2 WHERE customer_id = ?";
+		query = "SELECT * FROM customer WHERE customer_id = ?";
 		stmt = conn.prepareStatement(query);
 		stmt.setInt(1, id);
 		rs = stmt.executeQuery();
@@ -92,11 +99,19 @@ public class CustomerCrypto implements ResultSetProvider {
 		_new.updateString("email", Crypto.encrypt(_new.getString("email"), this.publicKey));
 	}
 	
+	@Function(
+		triggers = @Trigger(
+			called = BEFORE, events = { INSERT, UPDATE },
+			scope = ROW, table = "customer",
+			name = "tg_customerBeforeInsertUpdate"
+		)
+	)
 	public static void customerBeforeInsertUpdate(TriggerData td) throws SQLException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException, NoSuchPaddingException, NoSuchAlgorithmException {
 		CustomerCrypto ret = new CustomerCrypto();
 		ret.encryptData(td);
 	}
 
+	@Function(type = "customer")
 	public static ResultSetProvider getCustomerCrypto(int id) throws SQLException, NoSuchAlgorithmException {
 		CustomerCrypto ret = new CustomerCrypto();
 		ret.processQuery(id);

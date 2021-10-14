@@ -8,6 +8,8 @@ import java.sql.SQLException;
 
 import org.postgresql.pljava.ResultSetHandle;
 
+import org.postgresql.pljava.annotation.Function;
+
 public class CustomerResultSet implements ResultSetHandle {
 	private Connection conn;
 	private PreparedStatement stmt;
@@ -30,6 +32,7 @@ public class CustomerResultSet implements ResultSetHandle {
 		return stmt.executeQuery();
 	}
 
+	@Function(type = "customer")
 	public static ResultSetHandle getCustomerLimit10() throws SQLException {
 		return new CustomerResultSet();
 	}
