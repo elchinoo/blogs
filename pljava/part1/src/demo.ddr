@@ -1,9 +1,9 @@
 SQLActions[]={
 "BEGIN INSTALL
-CREATE FUNCTION getCustomerInfo( INT ) RETURNS CHAR AS
+CREATE FUNCTION getCustomerInfo( INT ) RETURNS VARCHAR AS
     'com.percona.blog.pljava.Customers.getCustomerInfo( java.lang.Integer )'
 LANGUAGE java;
-CREATE FUNCTION getCustomerTotal( INT ) RETURNS CHAR AS
+CREATE FUNCTION getCustomerTotal( INT ) RETURNS VARCHAR AS
     'com.percona.blog.pljava.Customers.getCustomerTotal( java.lang.Integer )'
 LANGUAGE java;
 END INSTALL",
